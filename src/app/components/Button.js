@@ -4,7 +4,6 @@ import React from "react";
 export default function Button({
   children,
   startIcon: StartIcon,
-  endIcon: EndIcon,
   variant = "primary",
   className = "",
   ...props
@@ -14,7 +13,7 @@ export default function Button({
     secondary: "bg-black/10 text-black hover:bg-black/5 rounded-xl px-5 py-3",
     rounded:   "bg-black/10 text-black hover:bg-black/5 rounded-full p-4",
   };
-  const base = "inline-flex items-center gap-3 cursor-pointer w-fit";
+  const base = "inline-flex items-center gap-3 cursor-pointer w-fit font-medium";
   const classes = [base, variantStyles[variant], className]
     .filter(Boolean)
     .join(" ");
@@ -23,7 +22,6 @@ export default function Button({
     <button {...props} className={classes}>
       {StartIcon && <StartIcon size={16} weight="bold" />}
       {children}
-      {EndIcon   && <EndIcon   size={16} weight="bold" />}
     </button>
   );
 }

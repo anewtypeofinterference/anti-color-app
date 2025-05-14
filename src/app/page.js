@@ -1,3 +1,4 @@
+// src/app/page.js
 "use client";
 import { useState, useEffect } from "react";
 import useSWR                   from "swr";
@@ -10,15 +11,18 @@ import Input        from "./components/Input";
 import Modal        from "./components/Modal";
 import ProjectCard  from "./components/ProjectCard";
 import EmptyState   from "./components/EmptyState";
-import Toast        from "./components/Toast";
 
 const fetcher  = (url) => fetch(url).then((r) => r.json());
 const makeSlug = (t) =>
-  slugify(t, { lower: true, strict: true, remove: /[*+~.()'"!:@]/g });
+  slugify(t, {
+    lower:   true,
+    strict:  true,
+    remove:  /[*+~.()'"!:@]/g
+  });
 
 export default function Home() {
   const router = useRouter();
-  const { data: projects = [], mutate } = useSWR("/api/projects", fetcher);
+  const { data: projects, isLoading = [], mutate } = useSWR("/api/projects", fetcher);
 
   const [menuId,        setMenuId]        = useState(null);
   const [confirmId,     setConfirmId]     = useState(null);
@@ -26,12 +30,13 @@ export default function Home() {
   const [renameName,    setRenameName]    = useState("");
   const [newModalOpen,  setNewModalOpen]  = useState(false);
   const [newName,       setNewName]       = useState("");
-  const [toast, setToast]             = useState("");
-  const pop = msg => {
+  const [toast,         setToast]         = useState("");
+  const pop = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   };
 
+  // click‐outside to close pop‐over
   useEffect(() => {
     if (!menuId) return;
     const onClick = (e) => {
@@ -44,32 +49,35 @@ export default function Home() {
     return () => window.removeEventListener("click", onClick);
   }, [menuId]);
 
+  // CREATE
   const create = async () => {
     const name = newName.trim();
-    if (!name) return pop("Navn er påkrevd");
+    if (!name) { pop("Navn er påkrevd"); return; }
     const id = makeSlug(name);
-    if (projects.some((p) => p.id === id)) return pop("Finnes allerede");
+    if (projects.some((p) => p.id === id)) { pop("Finnes allerede"); return; }
     const res = await fetch("/api/projects", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name }),
+      body:    JSON.stringify({ id, name }),
     });
-    if (!res.ok) return pop("Feil ved oppretting");
+    if (!res.ok) { pop("Feil ved oppretting"); return; }
     mutate();
     setNewName("");
     setNewModalOpen(false);
     pop("Prosjekt opprettet");
   };
 
+  // DELETE
   const remove = async (id) => {
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-    if (!res.ok) return pop("Feil ved sletting");
+    if (!res.ok) { pop("Feil ved sletting"); return; }
     mutate();
     pop("Prosjekt slettet");
     setMenuId(null);
     setConfirmId(null);
   };
 
+  // RENAME
   const openRename = (p) => {
     setRenameModalId(p.id);
     setRenameName(p.name);
@@ -80,26 +88,29 @@ export default function Home() {
     const name = renameName.trim();
     if (!name) { pop("Navn er påkrevd"); return; }
     const newId = makeSlug(name);
-    if ((newId!==renameModalId && projects.some(p=>p.id===newId))||!newId) {
-      return pop("Ugyldig eller finnes allerede");
+    if ((newId !== renameModalId && projects.some((p) => p.id === newId)) || !newId) {
+      pop("Ugyldig eller finnes allerede");
+      return;
     }
     const res = await fetch(`/api/projects/${renameModalId}`, {
-      method: "PATCH",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: newId, name }),
+      body:    JSON.stringify({ id: newId, name }),
     });
     const body = await res.json();
-    if (!res.ok) { pop(body.error||"Feil ved omdøping"); return; }
+    if (!res.ok) { pop(body.error || "Feil ved omdøping"); return; }
     mutate();
     setRenameModalId(null);
     pop("Prosjekt omdøpt");
     if (body.newId) router.push(`/${body.newId}`);
   };
 
+  if (isLoading) return <div className="p-10">Laster…</div>;
+
   return (
-    <div className="p-12">
-      <div className="flex items-center justify-between mb-12">
-        <h1 className="text-2xl">Prosjekter</h1>
+    <div className="p-12 bg-black/5 min-h-screen">
+      <div className="flex items-center justify-between mb-20">
+        <h1 className="text-3xl">Prosjekter</h1>
         {projects.length > 0 && (
           <Button
             variant="primary"
@@ -112,7 +123,7 @@ export default function Home() {
       </div>
 
       {projects.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
           {projects.map((p) => (
             <ProjectCard
               key={p.id}
@@ -141,6 +152,7 @@ export default function Home() {
         </EmptyState>
       )}
 
+      {/* Create Modal */}
       {newModalOpen && (
         <Modal
           title="Opprett nytt prosjekt"
@@ -159,9 +171,10 @@ export default function Home() {
         </Modal>
       )}
 
+      {/* Rename Modal */}
       {renameModalId && (
         <Modal
-          title="Endre projektnavn"
+          title="Endre prosjektnavn"
           onCancel={() => setRenameModalId(null)}
           onConfirm={renameProject}
           confirmLabel="Lagre"
@@ -176,7 +189,12 @@ export default function Home() {
         </Modal>
       )}
 
-      <Toast message={toast} />
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

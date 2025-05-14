@@ -11,12 +11,13 @@ export default function Modal({
   cancelLabel = "Avbryt",
   confirmLabel = "Lagre",
   confirmDisabled = false,
+  width = "w-120",
 }) {
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50">
-      <div className="bg-white p-9 rounded-2xl w-120 space-y-9">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-xl flex items-center justify-center z-50">
+      <div className={`bg-white p-9 rounded-2xl ${width} space-y-9`}>
         <div>
-          <h2 className="text-2xl mb-1">{title}</h2>
+          <h2 className="text-2xl font-medium mb-1">{title}</h2>
           <p className="opacity-60">{description}</p>
         </div>
         {children}

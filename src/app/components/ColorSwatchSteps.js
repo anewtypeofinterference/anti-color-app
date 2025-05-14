@@ -56,13 +56,13 @@ export default function ColorSwatchSteps({ c,m,y,k, stepConfigs=[] }) {
 
       /* label */
       let lbl="";
-      const hLbl = H&&dH!==0?`${H.varyChannel.toUpperCase()}${dH>0?"+":""}${dH}`:"";
-      const vLbl = V&&dV!==0?`${V.varyChannel.toUpperCase()}${dV>0?"+":""}${dV}`:"";
+      const hLbl = H&&dH!==0?`${H.varyChannel.toUpperCase()}${dH>0?" +":" "}${dH}`:"";
+      const vLbl = V&&dV!==0?`${V.varyChannel.toUpperCase()}${dV>0?" +":" "}${dV}`:"";
       if(dH===0&&dV===0) lbl="Base";
       else if(hLbl&&vLbl){
         if(H&&V&&H.varyChannel===V.varyChannel){
-          const sum=dH+dV; lbl=`${H.varyChannel.toUpperCase()}${sum>0?"+":""}${sum}`;
-        }else lbl=`${hLbl},${vLbl}`;
+          const sum=dH+dV; lbl=`${H.varyChannel.toUpperCase()}${sum>0?"+":" "}${sum}`;
+        }else lbl=`${hLbl} ${vLbl}`;
       }else lbl=hLbl||vLbl;
 
       cell.label=lbl; cell.active=true;

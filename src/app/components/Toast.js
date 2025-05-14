@@ -1,18 +1,19 @@
+// src/app/components/Toast.jsx
 "use client";
 import { useEffect } from "react";
 
-export default function Toast({ message, duration = 3000 }) {
+export default function Toast({ message, onClose, duration = 3000 }) {
   useEffect(() => {
     if (!message) return;
     const timer = setTimeout(() => {
-      // ingenting – tom, fordi forelder fjerner `message`
+      onClose?.();
     }, duration);
     return () => clearTimeout(timer);
-  }, [message, duration]);
+  }, [message, duration, onClose]);
 
   if (!message) return null;
   return (
-    <div className="fixed bottom-12 right-12 w-120 bg-black/5 text-black px-6 py-4 rounded-lg">
+    <div className="fixed bottom-6 right-6 bg-black text-white px-6 py-4 rounded">
       {message}
     </div>
   );
