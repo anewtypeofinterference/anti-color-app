@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import useSWR                  from "swr";
 import { useParams, useRouter} from "next/navigation";
-import { ArrowLeft }          from "phosphor-react";
+import { ArrowLeft, Trash }          from "phosphor-react";
 import ColorSwatchSteps       from "../../components/ColorSwatchSteps";
 import Button                 from "../../components/Button";
 import Toast                  from "../../components/Toast";
+import Modal from "../../components/Modal";
 
 const fetcher = u=>fetch(u).then(r=>r.json());
 const blankStep = axis => ({
