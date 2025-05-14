@@ -83,17 +83,17 @@ export default function ProjectCard({
       <Link href={`/${project.id}`} passHref>
         <div className="p-9 bg-white rounded-2xl cursor-pointer flex flex-col justify-between h-full group">
           <div>
-            <h3 className="text-2xl mb-9">{project.name}</h3>
+            <h3 className="text-2xl mb-6 font-medium">{project.name}</h3>
 
             {/* color preview row */}
             {colors.length > 0 && (
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 {colors.slice(0, 5).map((c) => {
                   const { r, g, b } = cmykToRgb(c.c, c.m, c.y, c.k);
                   return (
                     <div
                       key={c.id}
-                      className="w-4 h-4 rounded-md"
+                      className="w-5 h-5 rounded-md"
                       style={{ backgroundColor: `rgb(${r},${g},${b})` }}
                     />
                   );

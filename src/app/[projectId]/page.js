@@ -75,19 +75,18 @@ export default function ProjectPage() {
   };
 
   const handleGeneratePDF = async () => {
-    if (!project?.colors) return;
-    try {
-      const pdfBytes = await generatePDF(project.colors);
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${project.name}-trykkfarger.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Kunne ikke generere PDF:", err);
-    }
+    const res = await fetch('/api/generate-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colors: project.colors, projectName: project.name })
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.name}-CMYK.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   function cmykToRgbString(c, m, y, k) {

@@ -21,7 +21,7 @@ export default function ColorSwatch({ c, m, y, k, label }) {
     >
       {label && (
         <div
-          className={`absolute bottom-2 left-2.5 text-xs w-fit ${label === "Base" ? "!bottom-1.5 !left-1.5 px-1.25 py-0.5 rounded bg-white/15 !text-white" : ""}`}
+          className={`absolute bottom-2 left-2.5 text-[10px] w-fit ${label === "Base" ? "!bottom-1.5 !left-1.5 px-1.25 py-0.5 rounded bg-white/15 !text-white" : ""}`}
           style={{
             color: textColor,
             backgroundColor:
@@ -33,7 +33,7 @@ export default function ColorSwatch({ c, m, y, k, label }) {
       )}
 
       <div
-        className="absolute top-2 left-2.5 text-xs"
+        className="absolute top-2 left-2.5 text-[10px]"
         style={{ color: textColor }}
       >
         {c} {m} {y} {k}

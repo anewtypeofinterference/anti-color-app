@@ -29,7 +29,7 @@ export default function ColorCard({
   return (
     <div className="relative group aspect-[4/3]">
       {/* Three-dot trigger */}
-      <div className="absolute top-7 right-7">
+      <div className="absolute top-6.5 right-6.5">
         <Button
           variant="rounded"
           startIcon={DotsThreeVertical}
@@ -78,12 +78,12 @@ export default function ColorCard({
       <Link href={`/${projectId}/${color.id}`} passHref>
         <div className="p-9 bg-white rounded-2xl cursor-pointer flex flex-col justify-between h-full group" style={{ backgroundColor: `rgb(${r},${g},${b})` }}
         >
-          <h3 className={`text-2xl ${tc}`}>{color.name}</h3>
-          <div className={`flex gap-1 text-sm ${tc === "text-white" ? "text-white" : "text-black"}`}>
-            <span className={`py-0.75 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.c}</span>
-            <span className={`py-0.75 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.m}</span>
-            <span className={`py-0.75 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.y}</span>
-            <span className={`py-0.75 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.k}</span>
+          <h3 className={`text-xl font-medium ${tc}`}>{color.name}</h3>
+          <div className={`flex gap-2 text-xs ${tc === "text-white" ? "text-white" : "text-black"}`}>
+            <span className={`py-1 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.c}</span>
+            <span className={`py-1 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.m}</span>
+            <span className={`py-1 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.y}</span>
+            <span className={`py-1 px-2 rounded-md ${tc === "text-black" ? "bg-black/10" : "bg-white/15"}`}>{color.k}</span>
           </div>
         </div>
       </Link>
