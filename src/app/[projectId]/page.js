@@ -1,11 +1,11 @@
 // src/app/[projectId]/page.js
 "use client";
+
 import { useState } from "react";
 import useSWR from "swr";
 import { useParams } from "next/navigation";
 import slugify from "slugify";
 import { ArrowLeft, Plus } from "phosphor-react";
-import { generatePDF } from "../utils/pdfUtils";
 
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -34,9 +34,9 @@ export default function ProjectPage() {
   const [colorMenuId, setColorMenuId] = useState(null);
   const [colorConfirmId, setColorConfirmId] = useState(null);
 
-  // Determine if user has entered any non-zero value
-  const total = C + M + Y + K;
-  const useStyle = total > 0;
+  // mark‐for‐print state
+  const [markMode, setMarkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const pop = (msg) => {
     setToast(msg);
@@ -72,21 +72,12 @@ export default function ProjectPage() {
     if (!res.ok) return pop("Feil ved sletting");
     mutate();
     pop("Farge slettet");
-  };
-
-  const handleGeneratePDF = async () => {
-    const res = await fetch('/api/generate-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ colors: project.colors, projectName: project.name })
+    // also clear from selection
+    setSelectedIds((s) => {
+      const ns = new Set(s);
+      ns.delete(cid);
+      return ns;
     });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.name}-CMYK.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   function cmykToRgbString(c, m, y, k) {
@@ -96,50 +87,161 @@ export default function ProjectPage() {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
+  const handleGeneratePDF = async () => {
+    const all = project.colors || [];
+    const toPrint = Array.from(selectedIds).length
+      ? all.filter((c) => selectedIds.has(c.id))
+      : all;
+    if (!toPrint.length) {
+      pop("Ingen farger valgt for utskrift");
+      return;
+    }
+    const res = await fetch("/api/generate-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ colors: toPrint, projectName: project.name }),
+    });
+    if (!res.ok) {
+      pop("PDF-generering feilet");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${project.name}-CMYK.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // reset mark mode
+    setMarkMode(false);
+    setSelectedIds(new Set());
+  };
+
+  function isLightCmyk(c, m, y, k) {
+    const L =
+      0.299 * (1 - c / 100) * (1 - k / 100) +
+      0.587 * (1 - m / 100) * (1 - k / 100) +
+      0.114 * (1 - y / 100) * (1 - k / 100);
+    return L > 0.5;
+  }
+
   if (error) return <div className="p-10 text-red-600">Feil ved lasting</div>;
   if (isLoading) return <div className="p-10">Laster…</div>;
 
-  const colors = Array.isArray(project.colors) ? project.colors : [];
+  const colors = project.colors || [];
+  const anySelected = selectedIds.size > 0;
 
   return (
     <div className="p-12 bg-white min-h-screen">
-      <div className="flex items-center gap-10 mb-20">
-        <Button
-          variant="rounded"
-          startIcon={ArrowLeft}
-          onClick={() => history.back()}
-        />
-        <h1 className="text-3xl flex-1">{project.name}</h1>
+      {/* Header */}
+      <div className="flex justify-end items-center mb-20">
+        {markMode ? (
+          <div className="flex items-center gap-10 flex-1">
+            <h1 className="text-3xl">Marker farger for utskrift</h1>
+          </div>
+        ) : (
+          <div className="flex items-center gap-10 flex-1">
+            <Button variant="rounded" startIcon={ArrowLeft} onClick={() => history.back()} />
+            <h1 className="text-3xl">{project.name}</h1>
+          </div>
+        )}
         <div className="flex gap-3">
-          {colors.length > 0 && (
-            <Button variant="secondary" onClick={handleGeneratePDF}>
-              Generer PDF
-            </Button>
+          {markMode ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setMarkMode(false);
+                  setSelectedIds(new Set());
+                }}
+              >
+                Avbryt
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleGeneratePDF}
+                disabled={!anySelected}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Print{anySelected && ` (${selectedIds.size})`}
+              </Button>
+            </>
+          ) : (
+            <>
+              {colors.length > 0 && (
+                <Button variant="secondary" onClick={() => setMarkMode(true)}>
+                  Marker for utskrift
+                </Button>
+              )}
+              <Button variant="primary" startIcon={Plus} onClick={() => setOpen(true)}>
+                Ny farge
+              </Button>
+            </>
           )}
-          <Button
-            variant="primary"
-            startIcon={Plus}
-            onClick={() => setOpen(true)}
-          >
-            Ny farge
-          </Button>
         </div>
       </div>
 
-      {colors.length > 0 ? (
+      {/* Color Grid */}
+      {colors.length ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-6">
-          {colors.map((c) => (
-            <ColorCard
-              key={c.id}
-              color={c}
-              projectId={projectId}
-              menuOpen={colorMenuId === c.id}
-              onMenuToggle={setColorMenuId}
-              confirmId={colorConfirmId}
-              setConfirmId={setColorConfirmId}
-              onDelete={deleteColor}
-            />
-          ))}
+          {colors.map((c) => {
+            const isSel = selectedIds.has(c.id);
+            return (
+              <div key={c.id} className="relative">
+                {/* overlay to capture clicks when marking */}
+                {markMode && (
+                  <div
+                    className="absolute inset-0 z-20 cursor-pointer rounded-xl"
+                    onClick={() => {
+                      setSelectedIds((s) => {
+                        const ns = new Set(s);
+                        isSel ? ns.delete(c.id) : ns.add(c.id);
+                        return ns;
+                      });
+                    }}
+                  />
+                )}
+
+                {/* the actual card, disable its own interactions in markMode */}
+                <div className={markMode ? "pointer-events-none" : ""}>
+                  <ColorCard
+                    color={c}
+                    projectId={projectId}
+                    menuOpen={colorMenuId === c.id}
+                    onMenuToggle={setColorMenuId}
+                    confirmId={colorConfirmId}
+                    setConfirmId={setColorConfirmId}
+                    onDelete={deleteColor}
+                  />
+                </div>
+
+                {markMode && (
+                  <div className={`pointer-events-none absolute bottom-9 right-9 w-6 h-6 z-40 rounded-lg ${isLightCmyk(c.c, c.m, c.y, c.k) ? 'bg-black' : 'bg-white'}`} />
+                )}
+
+                {/* visual highlight for selected */}
+                {markMode && isSel && (
+                  <div
+                    className={`
+                      absolute inset-0
+                      rounded-2xl
+                      bg-white/20
+                      pointer-events-none 
+                    `}
+                  >
+                    <div
+                      className={`
+                        absolute bottom-11 right-11
+                        w-2 h-2 rounded-full z-70 pointer-events-none
+                        ${isLightCmyk(c.c, c.m, c.y, c.k) ? 'bg-white' : 'bg-black'}
+                      `}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <EmptyState
@@ -152,6 +254,7 @@ export default function ProjectPage() {
         </EmptyState>
       )}
 
+      {/* New‐color modal */}
       {open && (
         <Modal
           title="Ny farge"
@@ -164,57 +267,22 @@ export default function ProjectPage() {
           width="w-160"
         >
           <div className="flex flex-col gap-4">
-            {/* Name */}
             <Input
               placeholder="Navn"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="placeholder:text-black/30 focus:outline-none"
             />
-              {/* CMYK inputs */}
-              <div className="flex-1 flex gap-3">
-                <GlyphInput
-                  glyph="C"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={C}
-                  onChange={(e) => setC(+e.target.value)}
-                />
-                <GlyphInput
-                  glyph="M"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={M}
-                  onChange={(e) => setM(+e.target.value)}
-                />
-                <GlyphInput
-                  glyph="Y"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={Y}
-                  onChange={(e) => setY(+e.target.value)}
-                />
-                <GlyphInput
-                  glyph="K"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={K}
-                  onChange={(e) => setK(+e.target.value)}
-                />
-              </div>
-              {/* Live preview swatch */}
-              <div
-                className="w-full aspect-[16/6] rounded-xl bg-black/3"
-                style={
-                  useStyle
-                    ? { backgroundColor: cmykToRgbString(C, M, Y, K) }
-                    : undefined
-                }
-              />
+            <div className="flex gap-3">
+              <GlyphInput glyph="C" type="number" min={0} max={100} value={C} onChange={(e) => setC(+e.target.value)} />
+              <GlyphInput glyph="M" type="number" min={0} max={100} value={M} onChange={(e) => setM(+e.target.value)} />
+              <GlyphInput glyph="Y" type="number" min={0} max={100} value={Y} onChange={(e) => setY(+e.target.value)} />
+              <GlyphInput glyph="K" type="number" min={0} max={100} value={K} onChange={(e) => setK(+e.target.value)} />
+            </div>
+            <div
+              className="w-full aspect-[16/6] rounded-xl bg-black/3"
+              style={C + M + Y + K > 0 ? { backgroundColor: cmykToRgbString(C, M, Y, K) } : undefined}
+            />
           </div>
         </Modal>
       )}

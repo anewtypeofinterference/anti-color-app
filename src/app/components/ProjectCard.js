@@ -93,7 +93,7 @@ export default function ProjectCard({
                   return (
                     <div
                       key={c.id}
-                      className="w-5 h-5 rounded-md"
+                      className="w-9 aspect-[4/3] rounded-md"
                       style={{ backgroundColor: `rgb(${r},${g},${b})` }}
                     />
                   );
