@@ -3,15 +3,16 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import slugify from "slugify";
 import { ArrowLeft, Plus } from "phosphor-react";
 
+import { useToast } from "../components/ToastContext";
+import { cmykToRgb, rgbToColorString, getTextColor } from "../utils/ColorUtils";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import Modal from "../components/Modal";
 import ColorCard from "../components/ColorCard";
-import Toast from "../components/Toast";
 import EmptyState from "../components/EmptyState";
 import GlyphInput from "../components/GlyphInput";
 
@@ -21,10 +22,11 @@ const makeSlug = (t) =>
 
 export default function ProjectPage() {
   const { projectId } = useParams();
+  const router = useRouter();
   const { data: project, error, isLoading, mutate } =
     useSWR(`/api/projects/${projectId}`, fetcher);
+  const { showToast } = useToast();
 
-  const [toast, setToast] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [C, setC] = useState(0);
@@ -38,10 +40,7 @@ export default function ProjectPage() {
   const [markMode, setMarkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const pop = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
-  };
+  const pop = (msg) => showToast(msg);
 
   const createColor = async () => {
     const nm = name.trim();
@@ -81,10 +80,8 @@ export default function ProjectPage() {
   };
 
   function cmykToRgbString(c, m, y, k) {
-    const r = Math.round(255 * (1 - c / 100) * (1 - k / 100));
-    const g = Math.round(255 * (1 - m / 100) * (1 - k / 100));
-    const b = Math.round(255 * (1 - y / 100) * (1 - k / 100));
-    return `rgb(${r}, ${g}, ${b})`;
+    const rgb = cmykToRgb(c, m, y, k);
+    return rgbToColorString(rgb);
   }
 
   const handleGeneratePDF = async () => {
@@ -119,11 +116,8 @@ export default function ProjectPage() {
   };
 
   function isLightCmyk(c, m, y, k) {
-    const L =
-      0.299 * (1 - c / 100) * (1 - k / 100) +
-      0.587 * (1 - m / 100) * (1 - k / 100) +
-      0.114 * (1 - y / 100) * (1 - k / 100);
-    return L > 0.5;
+    const rgb = cmykToRgb(c, m, y, k);
+    return getTextColor(rgb) === "text-black";
   }
 
   if (error) return <div className="p-10 text-red-600">Feil ved lasting</div>;
@@ -142,7 +136,7 @@ export default function ProjectPage() {
           </div>
         ) : (
           <div className="flex items-center gap-10 flex-1">
-            <Button variant="rounded" startIcon={ArrowLeft} onClick={() => history.back()} />
+            <Button variant="rounded" startIcon={ArrowLeft} onClick={() => router.back()} />
             <h1 className="text-3xl">{project.name}</h1>
           </div>
         )}
@@ -286,8 +280,6 @@ export default function ProjectPage() {
           </div>
         </Modal>
       )}
-
-      <Toast msg={toast} />
     </div>
   );
 }

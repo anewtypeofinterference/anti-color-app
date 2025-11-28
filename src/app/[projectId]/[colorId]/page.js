@@ -6,11 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import { ArrowLeft, Trash, Plus } from "phosphor-react";
 
+import { useToast } from "../../components/ToastContext";
+import { cmykToRgb, getTextColor, rgbToColorString } from "../../utils/ColorUtils";
 import ColorSwatchSteps from "../../components/ColorSwatchSteps";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
 import GlyphInput from "../../components/GlyphInput";
-import Toast from "../../components/Toast";
 import Select from "../../components/Select";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -24,22 +25,12 @@ const blankStep = axis => ({
 });
 const isEmpty = s => !s || (s.numMinusSteps === 0 && s.numPlusSteps === 0);
 const axisName = a => (a === "X" ? "Horisontal" : "Vertikal");
-
-function cmykToRgb(c, m, y, k) {
-  return {
-    r: Math.round(255 * (1 - c / 100) * (1 - k / 100)),
-    g: Math.round(255 * (1 - m / 100) * (1 - k / 100)),
-    b: Math.round(255 * (1 - y / 100) * (1 - k / 100)),
-  };
-}
-function txtColor({ r, g, b }) {
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? "text-black" : "text-white";
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ColorPage() {
   const { projectId, colorId } = useParams();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const { data: project, error, isLoading } =
     useSWR(`/api/projects/${projectId}`, fetcher);
@@ -48,33 +39,25 @@ export default function ColorPage() {
   const [steps, setSteps] = useState({});
   const [modal, setModal] = useState(blankStep("X"));
   const [show, setShow] = useState(false);
-  const [toast, setToast] = useState("");
 
   // Load the color
   useEffect(() => {
     if (!project) return;
     const c = project.colors?.find(c => c.id === colorId);
     if (!c) {
-      setToast("Farge ikke funnet");
+      showToast("Farge ikke funnet");
       return;
     }
     setBase({ name: c.name, c: c.c, m: c.m, y: c.y, k: c.k });
     setSteps(c.stepConfigs || {});
-  }, [project, colorId]);
-
-  // Auto-clear toast
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(""), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  }, [project, colorId, showToast]);
 
   if (error) return <div className="p-10 text-red-600">Feil ved lasting</div>;
   if (isLoading || !base) return <div className="p-10">Laster…</div>;
 
   // Contrast + preview steps
-  const { r, g, b } = cmykToRgb(base.c, base.m, base.y, base.k);
-  const tc = txtColor({ r, g, b });
+  const rgb = cmykToRgb(base.c, base.m, base.y, base.k);
+  const tc = getTextColor(rgb);
 
   let preview = [];
   if (show) {
@@ -110,7 +93,7 @@ export default function ColorPage() {
   const saveCfg = () => {
     setSteps(s => ({ ...s, [modal.axis]: modal }));
     setShow(false);
-    setToast(`${axisName(modal.axis)} lagret`);
+    showToast(`${axisName(modal.axis)} lagret`);
   };
   const delAxis = axis => {
     setSteps(s => {
@@ -131,7 +114,7 @@ export default function ColorPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ colors: updated }),
     });
-    setToast("Endringer er lagret");
+    showToast("Endringer er lagret");
   };
 
   return (
@@ -146,7 +129,7 @@ export default function ColorPage() {
         {/* Big swatch */}
         <div
           className="aspect-video p-9 rounded-2xl flex flex-col justify-between mb-12"
-          style={{ backgroundColor: `rgb(${r},${g},${b})` }}
+          style={{ backgroundColor: rgbToColorString(rgb) }}
         >
           <h1 className="text-2xl text-white">{base.name}</h1>
           <div className="flex gap-1 text-sm">
@@ -240,7 +223,7 @@ export default function ColorPage() {
           </div>
         </div>
 
-        {/* ─── Inline “step” panel ─── */}
+        {/* ─── Inline "step" panel ─── */}
         {show && (
           <div className="absolute top-0 left-0 w-full h-full bg-white z-20">
             <div className="bg-black/5 w-full h-full p-12">
@@ -308,9 +291,6 @@ export default function ColorPage() {
           <ColorSwatchSteps {...base} stepConfigs={preview} />
         </div>
       </div>
-
-      {/* ───────── Toast ───────── */}
-      <Toast message={toast} onClose={() => setToast("")} />
     </div>
   );
 }

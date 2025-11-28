@@ -1,18 +1,12 @@
 // src/app/components/ProjectCard.jsx
+"use client";
 import Link from "next/link";
 import { ArrowRight, DotsThreeVertical } from "phosphor-react";
+import { cmykToRgb, rgbToColorString } from "../utils/ColorUtils";
 import Button from "./Button";
-import Modal  from "./Modal";
-import Popover from "./Popover";
-
-// simple CMYK → RGB converter
-function cmykToRgb(c, m, y, k) {
-  return {
-    r: Math.round(255 * (1 - c / 100) * (1 - k / 100)),
-    g: Math.round(255 * (1 - m / 100) * (1 - k / 100)),
-    b: Math.round(255 * (1 - y / 100) * (1 - k / 100)),
-  };
-}
+import Card from "./Card";
+import PopoverMenu from "./PopoverMenu";
+import ConfirmationDialog from "./ConfirmationDialog";
 
 export default function ProjectCard({
   project,
@@ -24,15 +18,26 @@ export default function ProjectCard({
   onDelete,
 }) {
   const colors = project.colors || [];
+  
+  const menuItems = [
+    {
+      label: "Endre prosjektnavn",
+      onClick: () => onRename(project),
+    },
+    {
+      label: "Slett prosjekt",
+      onClick: () => setConfirmId(project.id),
+    },
+  ];
 
   return (
     <div className="relative group aspect-[3/4]">
       {/* three-dot trigger */}
-      <div className="absolute top-7 right-7">
+      <div className="absolute top-7 right-7 z-10">
         <Button
           variant="rounded"
           startIcon={DotsThreeVertical}
-          className="z-10 !bg-black/0 hover:!bg-black/5"
+          className="!bg-black/0 hover:!bg-black/5"
           onClick={(e) => {
             e.stopPropagation();
             setConfirmId(null);
@@ -42,59 +47,42 @@ export default function ProjectCard({
       </div>
 
       {/* pop-over menu */}
-      <Popover
+      <PopoverMenu
         open={menuOpen}
         onClose={() => onMenuToggle(null)}
         anchorId={project.id}
-      >
-        <button
-          className="w-full text-left px-4 py-3 text-white hover:bg-white/20 rounded-md cursor-pointer font-medium"
-          onClick={() => {
-            onRename(project);
-            onMenuToggle(null);
-          }}
-        >
-          Endre prosjektnavn
-        </button>
-        <button
-          className="w-full text-left px-4 py-3 text-white hover:bg-white/20 rounded-md cursor-pointer font-medium"
-          onClick={() => setConfirmId(project.id)}
-        >
-          Slett prosjekt
-        </button>
-      </Popover>
+        menuItems={menuItems}
+      />
 
-      {/* delete confirmation modal */}
-      {confirmId === project.id && (
-        <Modal
-          title="Slett prosjekt"
-          description="Er du sikker på at du vil slette prosjektet? Dette kan ikke angres."
-          onCancel={() => setConfirmId(null)}
-          onConfirm={() => {
-            onDelete(project.id);
-            setConfirmId(null);
-          }}
-          confirmLabel="Slett"
-          cancelLabel="Avbryt"
-        />
-      )}
+      {/* delete confirmation dialog */}
+      <ConfirmationDialog
+        isOpen={confirmId === project.id}
+        onClose={() => setConfirmId(null)}
+        onConfirm={() => onDelete(project.id)}
+        title="Slett prosjekt"
+        description="Er du sikker på at du vil slette prosjektet? Dette kan ikke angres."
+        confirmLabel="Slett"
+        cancelLabel="Avbryt"
+        variant="danger"
+      />
 
       {/* the card */}
       <Link href={`/${project.id}`} passHref>
-        <div className="p-9 bg-white rounded-2xl cursor-pointer flex flex-col justify-between h-full group">
+        <Card hover className="h-full justify-between">
           <div>
-            <h3 className="text-2xl mb-6 font-medium">{project.name}</h3>
+            <Card.Title>{project.name}</Card.Title>
 
             {/* color preview row */}
             {colors.length > 0 && (
               <div className="flex gap-2">
                 {colors.slice(0, 5).map((c) => {
-                  const { r, g, b } = cmykToRgb(c.c, c.m, c.y, c.k);
+                  const rgb = cmykToRgb(c.c, c.m, c.y, c.k);
+                  const bgColor = rgbToColorString(rgb);
                   return (
                     <div
                       key={c.id}
                       className="w-9 aspect-[4/3] rounded-md"
-                      style={{ backgroundColor: `rgb(${r},${g},${b})` }}
+                      style={{ backgroundColor: bgColor }}
                     />
                   );
                 })}
@@ -115,7 +103,7 @@ export default function ProjectCard({
               className="group-hover:!bg-black/5"
             />
           </div>
-        </div>
+        </Card>
       </Link>
     </div>
   );

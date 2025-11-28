@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function SessionGuard({ children }) {
-  const { status } = useSession();        // no `required: true`
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
