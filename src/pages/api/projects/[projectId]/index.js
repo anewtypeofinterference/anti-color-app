@@ -26,7 +26,28 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, newId: updates.id });
     }
 
+    console.log("PATCH request received for project:", projectId);
+    console.log("Updates being applied:", JSON.stringify(updates, null, 2));
+    
+    if (updates.colors) {
+      const colorWithSteps = updates.colors.find(c => c.stepConfigs);
+      if (colorWithSteps) {
+        console.log("Color with stepConfigs:", JSON.stringify(colorWithSteps, null, 2));
+      }
+    }
+
     await docRef.update(updates);
+    
+    // Verify what was saved
+    const saved = await docRef.get();
+    const savedData = saved.data();
+    if (savedData.colors) {
+      const savedColorWithSteps = savedData.colors.find(c => c.stepConfigs);
+      if (savedColorWithSteps) {
+        console.log("Saved color with stepConfigs:", JSON.stringify(savedColorWithSteps, null, 2));
+      }
+    }
+    
     return res.status(200).json({ ok: true });
   }
 

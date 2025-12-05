@@ -1,7 +1,7 @@
 // src/app/[projectId]/[colorId]/page.js
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import { ArrowLeft, Trash, Plus } from "phosphor-react";
@@ -32,15 +32,16 @@ export default function ColorPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  const { data: project, error, isLoading } =
+  const { data: project, error, isLoading, mutate } =
     useSWR(`/api/projects/${projectId}`, fetcher);
 
   const [base, setBase] = useState(null);
   const [steps, setSteps] = useState({});
+  const stepsRef = useRef({});
   const [modal, setModal] = useState(blankStep("X"));
   const [show, setShow] = useState(false);
 
-  // Load the color
+  // Load the color - only when project or colorId changes, not on every render
   useEffect(() => {
     if (!project) return;
     const c = project.colors?.find(c => c.id === colorId);
@@ -49,7 +50,18 @@ export default function ColorPage() {
       return;
     }
     setBase({ name: c.name, c: c.c, m: c.m, y: c.y, k: c.k });
-    setSteps(c.stepConfigs || {});
+    const stepConfigs = c.stepConfigs || {};
+    // Only update if we don't have local changes (check if stepsRef is empty or different)
+    // This prevents overwriting local edits that haven't been saved yet
+    if (Object.keys(stepsRef.current).length === 0 || JSON.stringify(stepsRef.current) === JSON.stringify(stepConfigs)) {
+      setSteps(stepConfigs);
+      stepsRef.current = stepConfigs;
+      console.log("Loaded stepConfigs from project:", JSON.stringify(stepConfigs, null, 2));
+    } else {
+      console.log("Skipping stepConfigs update - local changes detected");
+      console.log("Local stepsRef:", JSON.stringify(stepsRef.current, null, 2));
+      console.log("Project stepConfigs:", JSON.stringify(stepConfigs, null, 2));
+    }
   }, [project, colorId, showToast]);
 
   if (error) return <div className="p-10 text-red-600">Feil ved lasting</div>;
@@ -91,30 +103,127 @@ export default function ColorPage() {
     setShow(true);
   };
   const saveCfg = () => {
-    setSteps(s => ({ ...s, [modal.axis]: modal }));
+    console.log("saveCfg called with modal:", JSON.stringify(modal, null, 2));
+    const stepToSave = {
+      axis: modal.axis,
+      varyChannel: modal.varyChannel,
+      stepInterval: Number(modal.stepInterval) || 0,
+      numMinusSteps: Number(modal.numMinusSteps) || 0,
+      numPlusSteps: Number(modal.numPlusSteps) || 0,
+    };
+    console.log("Step to save:", JSON.stringify(stepToSave, null, 2));
+    console.log("Is empty?", isEmpty(stepToSave));
+    
+    setSteps(s => {
+      const updated = { ...s, [modal.axis]: stepToSave };
+      stepsRef.current = updated;
+      console.log("Updated stepsRef.current:", JSON.stringify(updated, null, 2));
+      console.log("Updated steps state will be:", JSON.stringify(updated, null, 2));
+      return updated;
+    });
     setShow(false);
-    showToast(`${axisName(modal.axis)} lagret`);
+    // Force a small delay to ensure state is updated before showing toast
+    setTimeout(() => {
+      showToast(`${axisName(modal.axis)} lagret`);
+      console.log("After saveCfg - steps state should be updated, check UI");
+    }, 100);
   };
   const delAxis = axis => {
     setSteps(s => {
       const o = { ...s };
       delete o[axis];
+      stepsRef.current = o;
       return o;
     });
   };
 
   const saveAll = async () => {
-    const updated = project.colors.map(c =>
-      c.id === colorId
-        ? { ...c, ...base, stepConfigs: steps }
-        : c
-    );
-    await fetch(`/api/projects/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ colors: updated }),
-    });
-    showToast("Endringer er lagret");
+    console.log("🔵 saveAll function called!");
+    try {
+      console.log("=== SAVE ALL CALLED ===");
+      console.log("stepsRef.current:", JSON.stringify(stepsRef.current, null, 2));
+      console.log("steps state:", JSON.stringify(steps, null, 2));
+      console.log("project.colors:", project.colors?.length, "colors");
+      console.log("colorId:", colorId);
+      
+      // Use stepsRef to get the latest value, not the stale closure
+      // Save ALL step configs, even if they appear empty (let Firestore store them)
+      const stepConfigsToSave = {};
+      
+      if (stepsRef.current.X) {
+        stepConfigsToSave.X = {
+          axis: stepsRef.current.X.axis || "X",
+          varyChannel: stepsRef.current.X.varyChannel || "c",
+          stepInterval: Number(stepsRef.current.X.stepInterval) || 0,
+          numMinusSteps: Number(stepsRef.current.X.numMinusSteps) || 0,
+          numPlusSteps: Number(stepsRef.current.X.numPlusSteps) || 0,
+        };
+        console.log("X config:", JSON.stringify(stepConfigsToSave.X, null, 2), "isEmpty:", isEmpty(stepConfigsToSave.X));
+      }
+      
+      if (stepsRef.current.Y) {
+        stepConfigsToSave.Y = {
+          axis: stepsRef.current.Y.axis || "Y",
+          varyChannel: stepsRef.current.Y.varyChannel || "c",
+          stepInterval: Number(stepsRef.current.Y.stepInterval) || 0,
+          numMinusSteps: Number(stepsRef.current.Y.numMinusSteps) || 0,
+          numPlusSteps: Number(stepsRef.current.Y.numPlusSteps) || 0,
+        };
+        console.log("Y config:", JSON.stringify(stepConfigsToSave.Y, null, 2), "isEmpty:", isEmpty(stepConfigsToSave.Y));
+      }
+      
+      console.log("Final stepConfigsToSave:", JSON.stringify(stepConfigsToSave, null, 2));
+      console.log("stepConfigsToSave keys:", Object.keys(stepConfigsToSave));
+      
+      // Always include stepConfigs, even if empty, to ensure Firestore stores it
+      const updated = project.colors.map(c => {
+        if (c.id === colorId) {
+          const updatedColor = {
+            ...c,
+            name: base.name,
+            c: base.c,
+            m: base.m,
+            y: base.y,
+            k: base.k,
+            stepConfigs: Object.keys(stepConfigsToSave).length > 0 ? stepConfigsToSave : {},
+          };
+          console.log("Updated color object:", JSON.stringify(updatedColor, null, 2));
+          console.log("stepConfigs in updatedColor:", JSON.stringify(updatedColor.stepConfigs, null, 2));
+          return updatedColor;
+        }
+        return c;
+      });
+      
+      console.log("Sending to API - colors array length:", updated.length);
+      const requestBody = { colors: updated };
+      console.log("Request body:", JSON.stringify(requestBody, null, 2));
+      
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Save failed - Status:", res.status, "Error:", errorText);
+        showToast("Feil ved lagring");
+        return;
+      }
+      
+      const result = await res.json();
+      console.log("Save response from API:", result);
+      
+      // Refresh SWR cache to show updated data
+      console.log("Refreshing SWR cache...");
+      await mutate();
+      console.log("Cache refreshed");
+      showToast("Endringer er lagret");
+    } catch (err) {
+      console.error("Error saving:", err);
+      console.error("Error stack:", err.stack);
+      showToast("Feil ved lagring");
+    }
   };
 
   return (
@@ -123,7 +232,15 @@ export default function ColorPage() {
       <div className="w-[30%] relative p-12">
         <div className="flex items-center gap-3 mb-20">
           <Button variant="rounded" startIcon={ArrowLeft} onClick={() => router.back()} />
-          <Button variant="primary" onClick={saveAll}>Lagre</Button>
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              console.log("🟢 Lagre button clicked!");
+              saveAll();
+            }}
+          >
+            Lagre
+          </Button>
         </div>
 
         {/* Big swatch */}
