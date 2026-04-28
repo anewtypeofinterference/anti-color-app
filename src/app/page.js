@@ -225,6 +225,7 @@ export default function Home() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && newName.trim() && create()}
+                  className="bg-black/5! hover:bg-black/10!"
           />
         </Modal>
       )}
@@ -244,6 +245,7 @@ export default function Home() {
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && renameName.trim() && renameProject()}
+                  className="bg-black/5! hover:bg-black/10!"
           />
         </Modal>
       )}
