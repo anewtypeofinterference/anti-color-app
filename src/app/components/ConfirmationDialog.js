@@ -13,7 +13,7 @@ export default function ConfirmationDialog({
   description = "Are you sure you want to perform this action?",
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
-  variant = "warning", // "warning", "danger", or "info"
+  variant = "warning",
 }) {
   if (!isOpen) return null;
   

@@ -1,5 +1,7 @@
 import { PDFDocument, StandardFonts, PDFOperator } from "pdf-lib";
 
+import { cmykPreviewUsesBlackLabelInk } from "./ColorUtils";
+
 const A3_WIDTH = 1190.55;
 const A3_HEIGHT = 841.89;
 
@@ -66,7 +68,13 @@ export async function generatePDF(colors) {
         );
 
         if(active){
-          const textColor = (cellCMYK[3]>50 || cellCMYK.slice(0,3).reduce((a,b)=>a+b,0)>150) ? [1,1,1,0] : [0,0,0,1];
+          const useBlack = cmykPreviewUsesBlackLabelInk(
+            cellCMYK[0],
+            cellCMYK[1],
+            cellCMYK[2],
+            cellCMYK[3]
+          );
+          const textColor = useBlack ? [0, 0, 0, 1] : [0, 0, 0, 0];
           const [tc,tm,ty,tk] = textColor;
           page.pushOperators(PDFOperator.of(`${tc} ${tm} ${ty} ${tk} k`));
           

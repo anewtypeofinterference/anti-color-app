@@ -1,8 +1,6 @@
 "use client";
+import React, { createContext, useState, useContext, useEffect } from "react";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
-
-// Create an inline Toast component
 const Toast = ({ message, onClose, duration = 3000 }) => {
   useEffect(() => {
     if (!message) return;
@@ -13,9 +11,17 @@ const Toast = ({ message, onClose, duration = 3000 }) => {
   }, [message, duration, onClose]);
 
   if (!message) return null;
+
   return (
-    <div className="fixed bottom-6 right-6 bg-black text-white px-6 py-4 rounded">
-      {message}
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-black text-white px-4 py-3 rounded-md font-medium max-w-xs">
+      <span className="flex-1">{message}</span>
+      <button
+        onClick={onClose}
+        className="text-white cursor-pointer"
+        aria-label="Lukk"
+      >
+        ✕
+      </button>
     </div>
   );
 };
@@ -38,4 +44,4 @@ export function ToastProvider({ children }) {
   );
 }
 
-export const useToast = () => useContext(ToastContext); 
+export const useToast = () => useContext(ToastContext);

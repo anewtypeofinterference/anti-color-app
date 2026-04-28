@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
+:root {
+  --radius: 0.375rem;
+}
+
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  color: #09090b;
+  background-color: #fafafa;
 }

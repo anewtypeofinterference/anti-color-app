@@ -1,0 +1,10 @@
+CMYK ICC profiles in this folder:
+
+- CoatedFOGRA39.icc — coated FOGRA39
+- UncoatedFOGRA29.icc — uncoated FOGRA29
+
+Official source and terms: https://www.eci.org/en/downloads  
+(Confirm license on eci.org or your profile vendor before redistribution.)
+
+Exports add a PDF OutputIntent with this ICC and attach the same file
+(Acrobat: Print Production → Output Preview, and Vedlegg). Page graphics stay DeviceCMYK.

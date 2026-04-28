@@ -6,7 +6,7 @@ import { ToastProvider } from "./components/ToastContext";
 import { ThemeProvider } from "./utils/ThemeContext";
 
 export const metadata = {
-  title: "Color-App",
+  title: "ANTI Fargeverktøy",
 };
 
 export default function RootLayout({ children }) {
@@ -15,7 +15,6 @@ export default function RootLayout({ children }) {
       
       <body>
         <AuthProvider>
-          {/* this will redirect to /auth/signin if you're not logged in */}
           <SessionGuard>
             <ThemeProvider>
               <ToastProvider>

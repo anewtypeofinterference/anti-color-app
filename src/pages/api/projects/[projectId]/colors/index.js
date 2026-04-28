@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   const { projectId } = req.query;
 
   if (req.method === "POST") {
-    const { id, name, c, m, y, k } = req.body;
+    const { id, name, c, m, y, k, createdBy } = req.body;
     const ref = coll.doc(projectId);
     const snap = await ref.get();
 
@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     }
 
     const colors = snap.data().colors || [];
-    const newColor = { id, name, c, m, y, k, stepConfigs: [] };
+    const now = new Date().toISOString();
+    const newColor = { id, name, c, m, y, k, stepConfigs: [], createdAt: now, updatedAt: now, createdBy: createdBy ?? null, updatedBy: createdBy ?? null };
     await ref.update({ colors: [...colors, newColor] });
 
     return res.status(201).json(newColor);

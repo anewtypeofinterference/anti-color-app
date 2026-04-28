@@ -1,25 +1,22 @@
 // components/ColorSwatch.js
 "use client";
 import React from "react";
-import { cmykToRgb, rgbToColorString, getTextColor, getContrastRatio } from "../utils/ColorUtils";
+import { cmykToRgb, rgbToColorString, getTextColorForCmyk } from "../utils/ColorUtils";
 
 export default function ColorSwatch({ c, m, y, k, label }) {
   const rgb = cmykToRgb(c, m, y, k);
-  const textColorClass = getTextColor(rgb);
-  const { withWhite, withBlack } = getContrastRatio(rgb);
-  
-  // Choose the text color with the best contrast ratio
-  const textColor = withWhite > withBlack ? "#fff" : "#000";
+  const useDarkText = getTextColorForCmyk(c, m, y, k) === "text-black";
+  const textColor = useDarkText ? "#000" : "#fff";
   
   return (
     <div
-      className="relative w-full rounded-lg overflow-hidden"
+      className="relative w-full h-full rounded-sm overflow-hidden"
       style={{ backgroundColor: rgbToColorString(rgb) }}
     >
       {label && (
         <div
-          className={`absolute bottom-2 left-2.5 text-[10px] w-fit ${
-            label === "Base" ? "!bottom-1.5 !left-1.5 px-1.25 py-0.5 rounded bg-white/15 !text-white" : ""
+          className={`absolute bottom-2 left-2.5 text-[10px] py-0.5 px-1 rounded-sm w-fit ${
+            label === "Base" ? "bg-white/15" : ""
           }`}
           style={{
             color: textColor,

@@ -1,7 +1,6 @@
-// src/app/components/ProjectCard.jsx
 "use client";
-import Link from "next/link";
-import { ArrowRight, DotsThreeVertical } from "phosphor-react";
+import { useRouter } from "next/navigation";
+import { DotsThreeVertical } from "phosphor-react";
 import { cmykToRgb, rgbToColorString } from "../utils/ColorUtils";
 import Button from "./Button";
 import Card from "./Card";
@@ -17,6 +16,7 @@ export default function ProjectCard({
   onRename,
   onDelete,
 }) {
+  const router = useRouter();
   const colors = project.colors || [];
   
   const menuItems = [
@@ -31,21 +31,7 @@ export default function ProjectCard({
   ];
 
   return (
-    <div className="relative group aspect-[3/4]">
-      {/* three-dot trigger */}
-      <div className="absolute top-7 right-7 z-10">
-        <Button
-          variant="rounded"
-          startIcon={DotsThreeVertical}
-          className="!bg-black/0 hover:!bg-black/5"
-          onClick={(e) => {
-            e.stopPropagation();
-            setConfirmId(null);
-            onMenuToggle(menuOpen ? null : project.id);
-          }}
-        />
-      </div>
-
+    <div className="relative group aspect-square">
       {/* pop-over menu */}
       <PopoverMenu
         open={menuOpen}
@@ -58,7 +44,7 @@ export default function ProjectCard({
       <ConfirmationDialog
         isOpen={confirmId === project.id}
         onClose={() => setConfirmId(null)}
-        onConfirm={() => onDelete(project.id)}
+        onConfirm={onDelete}
         title="Slett prosjekt"
         description="Er du sikker på at du vil slette prosjektet? Dette kan ikke angres."
         confirmLabel="Slett"
@@ -67,44 +53,40 @@ export default function ProjectCard({
       />
 
       {/* the card */}
-      <Link href={`/${project.id}`} passHref>
-        <Card hover className="h-full justify-between">
-          <div>
+      <Card hover className="h-full cursor-pointer" onClick={() => router.push(`/${project.id}`)}>
             <Card.Title>{project.name}</Card.Title>
+            <Button
+              variant="rounded"
+              startIcon={DotsThreeVertical}
+              className="absolute top-3! right-3! p-1! text-xs opacity-0! group-hover:opacity-100! transition-opacity!"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmId(null);
+                onMenuToggle(menuOpen ? null : project.id);
+              }}
+            />
 
-            {/* color preview row */}
-            {colors.length > 0 && (
-              <div className="flex gap-2">
-                {colors.slice(0, 5).map((c) => {
+          {colors.length > 0 && (
+            <div className="flex flex-col">
+              <div className="flex flex-wrap gap-1 mr-10">
+                {colors.map((c, i) => {
                   const rgb = cmykToRgb(c.c, c.m, c.y, c.k);
                   const bgColor = rgbToColorString(rgb);
                   return (
                     <div
-                      key={c.id}
-                      className="w-9 aspect-[4/3] rounded-md"
+                      key={`${c.id}-${i}`}
+                      className="w-4 aspect-square rounded-full"
                       style={{ backgroundColor: bgColor }}
                     />
                   );
                 })}
-                {colors.length > 5 && (
-                  <div className="w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center text-xs text-black/60">
-                    +{colors.length - 5}
-                  </div>
-                )}
               </div>
-            )}
-          </div>
-
-          {/* arrow button */}
-          <div className="absolute bottom-7 right-7">
-            <Button
-              variant="rounded"
-              startIcon={ArrowRight}
-              className="group-hover:!bg-black/5"
-            />
-          </div>
+              <span className="absolute bottom-4.5 left-4 select-none text-xs text-zinc-400">
+                {colors.length} {colors.length === 1 ? "farge" : "farger"}
+              </span>
+            </div>
+          )}
         </Card>
-      </Link>
     </div>
   );
 }

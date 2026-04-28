@@ -11,17 +11,34 @@ export default function Modal({
   cancelLabel = "Avbryt",
   confirmLabel = "Lagre",
   confirmDisabled = false,
-  width = "w-120",
+  /** Shown only while confirm is disabled (e.g. explain required fields). */
+  confirmHelpTextWhenDisabled,
+  variant = "default",
+  width = "w-full max-w-md",
 }) {
+  const confirmClass =
+    variant === "danger"
+      ? "!bg-red-600 hover:!bg-red-700 border-transparent"
+      : "";
+
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-xl flex items-center justify-center z-50">
-      <div className={`bg-white p-9 rounded-2xl ${width} space-y-9`}>
-        <div>
-          <h2 className="text-2xl font-medium mb-1">{title}</h2>
-          <p className="opacity-60">{description}</p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-8">
+      <div className={`bg-white rounded-md ${width}`}>
+        <div className="flex flex-col gap-8 p-8">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-base font-semibold leading-none">{title}</h2>
+            {description && (
+              <p className="text-zinc-500 leading-tight">{description}</p>
+            )}
+          </div>
+          {children && <div>{children}</div>}
         </div>
-        {children}
-        <div className="flex justify-end gap-2">
+
+        {confirmDisabled && confirmHelpTextWhenDisabled && (
+          <p className="px-8 pt-0 text-sm text-zinc-600">{confirmHelpTextWhenDisabled}</p>
+        )}
+
+        <div className="flex justify-end gap-4 p-8">
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
@@ -29,7 +46,7 @@ export default function Modal({
             variant="primary"
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className={confirmDisabled ? "!cursor-not-allowed bg-black/30 hover:!bg-black/30" : ""}
+            className={confirmClass}
           >
             {confirmLabel}
           </Button>

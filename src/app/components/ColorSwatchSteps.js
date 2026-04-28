@@ -1,75 +1,92 @@
 "use client";
-import React from "react";
+
 import ColorSwatch from "./ColorSwatch";
 
-// Helper functions for color step calculations
-const clamp = v => (v < 0 ? 0 : v > 100 ? 100 : v);
+const clamp = (v) => (v < 0 ? 0 : v > 100 ? 100 : v);
 const pick = (c, m, y, k, ch) => ({ c, m, y, k }[ch]);
-const deltaArray = ({ numMinusSteps: nm, numPlusSteps: np, stepInterval: si }) =>
-  Array.from({ length: nm + np + 1 }, (_, i) => (i - nm) * si);
+
+/** Signed deltas along one axis: [−nm×Δ, …, 0, …, +np×Δ] */
+function deltaArray({ numMinusSteps: nm, numPlusSteps: np, stepInterval: si }) {
+  const step = Number(si) || 0;
+  return Array.from({ length: nm + np + 1 }, (_, i) => (i - nm) * step);
+}
+
+const MAX_COLS = 7;
+const MAX_ROWS = 8;
 
 /**
- * Renders a grid of color swatches with stepped CMYK variations
+ * CMYK variation grid: X → columns, Y → rows. Uses CSS Grid with 1-based line
+ * placement (grid-column / grid-row start at 1 — line 0 is invalid and browsers
+ * ignore it, which broke layout when only one axis was active).
  */
 export default function ColorSwatchSteps({ c, m, y, k, stepConfigs = [] }) {
-  const MAX_COLS = 7, MAX_ROWS = 8;
+  const H = stepConfigs.find((s) => s.axis === "X");
+  const V = stepConfigs.find((s) => s.axis === "Y");
 
-  const H = stepConfigs.find(s => s.axis === "X");
-  const V = stepConfigs.find(s => s.axis === "Y");
+  const hCh = H?.varyChannel ?? "y";
+  const vCh = V?.varyChannel ?? "y";
 
-  const baseCol = H ? H.numMinusSteps : 0;
-  const baseRow = V ? V.numMinusSteps : 0;
+  const baseCol = H ? Number(H.numMinusSteps) || 0 : 0;
+  const baseRow = V ? Number(V.numMinusSteps) || 0 : 0;
 
   const hD = H ? deltaArray(H) : [0];
   const vD = V ? deltaArray(V) : [0];
 
-  // Initialize grid with base color
   const grid = Array.from({ length: MAX_ROWS }, () =>
     Array.from({ length: MAX_COLS }, () => ({
-      cc: c, mm: m, yy: y, kk: k, label: "", active: false,
+      cc: c,
+      mm: m,
+      yy: y,
+      kk: k,
+      label: "",
+      active: false,
     }))
   );
 
-  /* Calculate color values for the grid */
   vD.forEach((dV, vi) => {
     hD.forEach((dH, hi) => {
-      const row = baseRow + vi - (V ? V.numMinusSteps : 0);
-      const col = baseCol + hi - (H ? H.numMinusSteps : 0);
+      const row =
+        baseRow + vi - (V ? Number(V.numMinusSteps) || 0 : 0);
+      const col =
+        baseCol + hi - (H ? Number(H.numMinusSteps) || 0 : 0);
       if (row < 0 || row >= MAX_ROWS || col < 0 || col >= MAX_COLS) return;
 
       const cell = grid[row][col];
 
-      /* Apply horizontal variation */
       if (H) {
-        const base = pick(cell.cc, cell.mm, cell.yy, cell.kk, H.varyChannel);
-        const stepped = clamp(Number(base) + dH);
-        if (H.varyChannel === "c") cell.cc = stepped;
-        if (H.varyChannel === "m") cell.mm = stepped;
-        if (H.varyChannel === "y") cell.yy = stepped;
-        if (H.varyChannel === "k") cell.kk = stepped;
+        const baseInk = pick(cell.cc, cell.mm, cell.yy, cell.kk, hCh);
+        const stepped = clamp(Number(baseInk) + dH);
+        if (hCh === "c") cell.cc = stepped;
+        if (hCh === "m") cell.mm = stepped;
+        if (hCh === "y") cell.yy = stepped;
+        if (hCh === "k") cell.kk = stepped;
       }
 
-      /* Apply vertical variation */
       if (V) {
-        const base = pick(cell.cc, cell.mm, cell.yy, cell.kk, V.varyChannel);
-        const stepped = clamp(Number(base) + dV);
-        if (V.varyChannel === "c") cell.cc = stepped;
-        if (V.varyChannel === "m") cell.mm = stepped;
-        if (V.varyChannel === "y") cell.yy = stepped;
-        if (V.varyChannel === "k") cell.kk = stepped;
+        const baseInk = pick(cell.cc, cell.mm, cell.yy, cell.kk, vCh);
+        const stepped = clamp(Number(baseInk) + dV);
+        if (vCh === "c") cell.cc = stepped;
+        if (vCh === "m") cell.mm = stepped;
+        if (vCh === "y") cell.yy = stepped;
+        if (vCh === "k") cell.kk = stepped;
       }
 
-      /* Generate label */
       let lbl = "";
-      const hLbl = H && dH !== 0 ? `${H.varyChannel.toUpperCase()}${dH > 0 ? " +" : " "}${dH}` : "";
-      const vLbl = V && dV !== 0 ? `${V.varyChannel.toUpperCase()}${dV > 0 ? " +" : " "}${dV}` : "";
-      
+      const hLbl =
+        H && dH !== 0
+          ? `${hCh.toUpperCase()}${dH > 0 ? " +" : " "}${dH}`
+          : "";
+      const vLbl =
+        V && dV !== 0
+          ? `${vCh.toUpperCase()}${dV > 0 ? " +" : " "}${dV}`
+          : "";
+
       if (dH === 0 && dV === 0) {
         lbl = "Base";
       } else if (hLbl && vLbl) {
-        if (H && V && H.varyChannel === V.varyChannel) {
+        if (H && V && hCh === vCh) {
           const sum = dH + dV;
-          lbl = `${H.varyChannel.toUpperCase()}${sum > 0 ? "+" : " "}${sum}`;
+          lbl = `${hCh.toUpperCase()}${sum > 0 ? "+" : " "}${sum}`;
         } else {
           lbl = `${hLbl} ${vLbl}`;
         }
@@ -82,32 +99,49 @@ export default function ColorSwatchSteps({ c, m, y, k, stepConfigs = [] }) {
     });
   });
 
-  // Make sure the base cell is properly marked
-  grid[baseRow][baseCol] = { cc: c, mm: m, yy: y, kk: k, label: "Base", active: true };
+  grid[baseRow][baseCol] = {
+    cc: c,
+    mm: m,
+    yy: y,
+    kk: k,
+    label: "Base",
+    active: true,
+  };
+
+  const items = [];
+
+  grid.forEach((row, r) => {
+    row.forEach((cell, cIdx) => {
+      const gridColumn = cIdx + 1;
+      const gridRow = r + 1;
+
+      items.push(
+        cell.active ? (
+          <div
+            key={`sw-${r}-${cIdx}`}
+            style={{ gridColumn, gridRow }}
+            className="min-h-0 min-w-0"
+          >
+            <ColorSwatch c={cell.cc} m={cell.mm} y={cell.yy} k={cell.kk} label={cell.label} />
+          </div>
+        ) : (
+          <div key={`ph-${r}-${cIdx}`} style={{ gridColumn, gridRow }} className="rounded min-h-0" />
+        )
+      );
+    });
+  });
 
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: `repeat(${MAX_COLS}, 1fr)`,
-      gridTemplateRows: `repeat(${MAX_ROWS}, 1fr)`,
-      gap: "0.75rem",
-      width: "100%",
-      height: "100%",
-    }}>
-      {grid.flatMap((row, r) =>
-        row.map((cell, cIdx) =>
-          cell.active
-            ? <ColorSwatch 
-                key={`sw-${r}-${cIdx}`} 
-                c={cell.cc} 
-                m={cell.mm} 
-                y={cell.yy} 
-                k={cell.kk} 
-                label={cell.label}
-              />
-            : <div key={`ph-${r}-${cIdx}`} className="w-full h-full bg-black/0 rounded" />
-        )
-      )}
+    <div
+      className="min-h-0 w-full h-full"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${MAX_COLS}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${MAX_ROWS}, minmax(0, 1fr))`,
+        gap: "0.5rem",
+      }}
+    >
+      {items}
     </div>
   );
 }

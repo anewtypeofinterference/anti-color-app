@@ -2,8 +2,32 @@
 import fs from "fs";
 import path from "path";
 import { PDFDocument, PDFOperator } from "pdf-lib";
+
+import {
+  DEFAULT_PRINT_PROFILE_ID,
+  getPrintProfileById,
+} from "@/app/lib/cmykPrintProfiles";
+import { attachCmykOutputIntent } from "@/app/lib/pdfOutputIntent";
+import { cmykPreviewUsesBlackLabelInk } from "@/app/utils/ColorUtils";
 import TextToSVG from "text-to-svg";
 import parse from "svg-path-parser";
+
+const sanitizeFilename = (name) =>
+  name
+    .replace(/Æ/g, "AE").replace(/æ/g, "ae")
+    .replace(/Ø/g, "O").replace(/ø/g, "o")
+    .replace(/Å/g, "AA").replace(/å/g, "aa")
+    .replace(/[^\w\s\-().]/g, "")
+    .trim();
+
+/** Reject HTML error pages or truncated files mistaken for ICC. */
+function isIccProfileBuffer(buf) {
+  return (
+    buf &&
+    buf.length >= 132 &&
+    buf.subarray(36, 40).toString("ascii") === "acsp"
+  );
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -11,7 +35,29 @@ export default async function handler(req, res) {
     return res.status(405).end("Method Not Allowed");
   }
 
-  const { colors, projectName } = req.body;
+  const { colors, projectName, printProfileId: rawProfileId } = req.body;
+  const printProfileId =
+    typeof rawProfileId === "string" ? rawProfileId : DEFAULT_PRINT_PROFILE_ID;
+  const printProfile = getPrintProfileById(printProfileId);
+  if (!printProfile) {
+    return res.status(400).json({ error: "Unknown print profile" });
+  }
+
+  const iccPath = path.join(
+    process.cwd(),
+    "public",
+    "icc",
+    printProfile.iccFilename
+  );
+  let iccBytes;
+  try {
+    iccBytes = fs.readFileSync(iccPath);
+  } catch {
+    return res.status(500).json({ error: "ICC profile not found on server" });
+  }
+  if (!isIccProfileBuffer(iccBytes)) {
+    return res.status(500).json({ error: "ICC profile file is not valid on server" });
+  }
 
   // 1) load Inter.ttf so TextToSVG can vectorize every glyph
   const fontPath = path.join(process.cwd(), "public", "fonts", "Inter.ttf");
@@ -59,7 +105,7 @@ export default async function handler(req, res) {
     return metrics.width;
   }
 
-  // 4) setup PDF + grid
+  // 4) setup PDF + grid — DeviceCMYK fills; OutputIntent + attachment declare profile for Acrobat.
   const doc = await PDFDocument.create();
   const norm = v => Math.max(0, Math.min(1, v/100));
 
@@ -79,7 +125,7 @@ export default async function handler(req, res) {
     const dateStr = new Date()
       .toLocaleDateString("nb-NO",{ day:"2-digit", month:"2-digit", year:"2-digit" });
 
-    // pure-black CMYK
+    // pure-black CMYK (DeviceCMYK)
     page.pushOperators(PDFOperator.of("0 0 0 1 k"));
 
     // draw name at M:
@@ -166,11 +212,10 @@ export default async function handler(req, res) {
           } else lbl=[hL,vL].filter(Boolean).join(" ");
         }
 
-        // choose K-only text for best contrast
-        const lum=0.299*(1-cc/100)*(1-kk/100)
-                  +0.587*(1-mm/100)*(1-kk/100)
-                  +0.114*(1-yy/100)*(1-kk/100);
-        const fillOp = lum>0.5?"0 0 0 1 k":"0 0 0 0 k";
+        // Label contrast matches on-screen CMYK preview (PDF.js-style transform)
+        const fillOp = cmykPreviewUsesBlackLabelInk(cc, mm, yy, kk)
+          ? "0 0 0 1 k"
+          : "0 0 0 0 k";
         page.pushOperators(PDFOperator.of(fillOp));
 
         // bottom-left: CMYK numbers
@@ -181,10 +226,25 @@ export default async function handler(req, res) {
     }
   }
 
+  attachCmykOutputIntent(doc, iccBytes, {
+    outputConditionIdentifier: printProfile.outputConditionIdentifier,
+    outputCondition: printProfile.outputCondition,
+    info: printProfile.iccFilename,
+  });
+
+  await doc.attach(iccBytes, printProfile.iccFilename, {
+    mimeType: "application/vnd.iccprofile",
+    description: printProfile.label,
+  });
+
   const pdfBytes = await doc.save();
+  const baseName = `${sanitizeFilename(projectName)}-CMYK-${printProfile.downloadSlug}`;
   res
     .status(200)
     .setHeader("Content-Type","application/pdf")
-    .setHeader("Content-Disposition",`attachment; filename="${projectName}-CMYK.pdf"`)
+    .setHeader(
+      "Content-Disposition",
+      `attachment; filename="${baseName}.pdf"; filename*=UTF-8''${encodeURIComponent(`${projectName}-CMYK-${printProfile.downloadSlug}.pdf`)}`
+    )
     .send(Buffer.from(pdfBytes));
 }

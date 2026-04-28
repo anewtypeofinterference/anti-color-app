@@ -6,7 +6,11 @@ export default function Input({ className = "", ...props }) {
     <input
       {...props}
       className={[
-        "w-full bg-black/3 rounded-xl px-5 py-3 placeholder:text-black/30 outline-0",
+        "flex w-full rounded-md bg-transparent px-3 py-2 outline-none hover:bg-white/15 cursor-pointer",
+        "placeholder:text-zinc-400",
+        "transition-[color,box-shadow,background-color]",
+        "focus:cursor-text",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className,
       ]
         .filter(Boolean)

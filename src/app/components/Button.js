@@ -4,23 +4,35 @@ import React from "react";
 export default function Button({
   children,
   startIcon: StartIcon,
+  startIconSize = 14,
   variant = "primary",
   className = "",
   ...props
 }) {
   const variantStyles = {
-    primary:   "bg-black text-white hover:bg-black/75 rounded-xl px-5 py-3",
-    secondary: "bg-black/10 text-black hover:bg-black/5 rounded-xl px-5 py-3",
-    rounded:   "bg-black/10 text-black hover:bg-black/5 rounded-full p-4",
+    primary:
+      "bg-zinc-900 text-white py-2 px-3 rounded-sm",
+    secondary:
+      "bg-white text-black py-2 px-3 rounded-sm",
+    outline:
+      "bg-transparent text-black py-2 px-3 rounded-sm",
+    ghost:
+      "text-black py-2 px-3 rounded-sm",
+    rounded:
+      "bg-transparent text-black rounded-full p-3 border border-transparent",
   };
-  const base = "inline-flex items-center gap-3 cursor-pointer w-fit font-medium";
-  const classes = [base, variantStyles[variant], className]
+
+  const base =
+    "inline-flex items-center justify-center gap-2 font-medium cursor-pointer select-none " +
+    "disabled:cursor-not-allowed disabled:opacity-45 disabled:saturate-50";
+
+  const classes = [base, variantStyles[variant] || variantStyles.primary, className]
     .filter(Boolean)
     .join(" ");
 
   return (
     <button {...props} className={classes}>
-      {StartIcon && <StartIcon size={16} weight="bold" />}
+      {StartIcon && <StartIcon size={startIconSize} weight="bold" className="translate-y-0.25" />}
       {children}
     </button>
   );
