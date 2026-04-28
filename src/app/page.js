@@ -127,7 +127,7 @@ export default function Home() {
 
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex justify-center">
             {projects.length > 0 && (
-              <div className="relative w-120">
+              <div className="relative lg:w-80 xl:w-100 2xl:w-120">
                 <MagnifyingGlass
                   weight="bold"
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-black pointer-events-none"
@@ -152,20 +152,20 @@ export default function Home() {
             )}
           </div>
 
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 lg:gap-8">
             {projects.length > 0 && (
               <Button variant="primary" startIcon={Plus} onClick={() => setNewModalOpen(true)}>
                 Nytt prosjekt
               </Button>
             )}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 onClick={() => signOut({ callbackUrl: "/login" })}
               >
                 Logg ut
               </Button>
-              <div className="select-none h-8 w-8 rounded-full bg-[#004D40] flex items-center justify-center text-white text-xs font-semibold">
+              <div className="hidden select-none h-10 w-10 rounded-full bg-[#004D40] lg:flex items-center justify-center text-white text-xs font-bold">
                 {initial}
               </div>
             </div>

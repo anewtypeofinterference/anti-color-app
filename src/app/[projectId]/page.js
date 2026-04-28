@@ -247,6 +247,16 @@ export default function ProjectPage() {
                 onDelete={deleteColor}
               />
             ))}
+            {!markMode && (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="aspect-4/3 rounded-md border border-zinc-200 bg-transparent flex items-center justify-center gap-2 text-black hover:border-zinc-300 hover:bg-zinc-100 transition-colors cursor-pointer"
+              >
+                <Plus size={15} weight="bold" />
+                <span className="font-medium">Ny farge</span>
+              </button>
+            )}
           </ResponsiveCardGrid>
         ) : (
           <EmptyState

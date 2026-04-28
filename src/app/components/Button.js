@@ -4,7 +4,7 @@ import React from "react";
 export default function Button({
   children,
   startIcon: StartIcon,
-  startIconSize = 14,
+  startIconSize = 15,
   variant = "primary",
   className = "",
   ...props
